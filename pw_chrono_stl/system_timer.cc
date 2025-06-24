@@ -32,6 +32,12 @@ bool NoDepsTimedThreadNotification::try_acquire() {
 bool NoDepsTimedThreadNotification::try_acquire_until(
     SystemClock::time_point deadline) {
   std::unique_lock lock(lock_);
+  // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58931
+  if (deadline == SystemClock::time_point::max()) {
+    cv_.wait(lock, [&] { return is_set_; });
+    is_set_ = false;
+    return true;
+  }
   if (cv_.wait_until(lock, deadline, [&] { return is_set_; })) {
     is_set_ = false;
     return true;
